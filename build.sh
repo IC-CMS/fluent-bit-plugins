@@ -51,7 +51,8 @@ function runInteractive {
     --rm \
     -p 24224:24224 \
     -v $WORKING_DIR/log/:/fluent-bit/log/:rw \
-    --entrypoint="/bin/bash" \
+    -v $WORKING_DIR/conf/fluent-bit.conf:/fluent-bit/etc/fluent-bit.conf:wr \
+    --entrypoint="/bin/sh" \
     --name $CONTAINER_NAME \
     $IMG_STRING
 }
