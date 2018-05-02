@@ -23,21 +23,23 @@ INTERACTIVE=false
 function prepTmp {
    echo "Preparing temp space [ $WORKING_DIR ]"
    set -e
+   rm -rf $WORKING_DIR
    mkdir -p $WORKING_DIR/log
    mkdir -p $WORKING_DIR/etc
-   chmod -R ugo+rwx $WORKING_DIR
-   chcon -Rt svirt_sandbox_file_t $WORKING_DIR
+   sudo chmod -R ugo+rwx $WORKING_DIR
+   sudo chcon -Rt svirt_sandbox_file_t $WORKING_DIR
+   cp -r ./conf $WORKING_DIR
    set +e
 }
-
 
 function testrun {
   echo "testrun"
   prepTmp
   sudo docker run \
-    -it \
-    --rm \
+    -d \
     -p 24224:24224 \
+    --log-driver=json-file \
+    -v $WORKING_DIR/conf:/fluent-bit/etc \
     -v $WORKING_DIR/log/:/fluent-bit/log/:rw \
     --name $CONTAINER_NAME \
     $IMG_STRING
@@ -49,6 +51,7 @@ function runInteractive {
   sudo docker run \
     -it \
     --rm \
+    --log-driver=json-file \
     -p 24224:24224 \
     -v $WORKING_DIR/log/:/fluent-bit/log/:rw \
     -v $WORKING_DIR/conf/fluent-bit.conf:/fluent-bit/etc/fluent-bit.conf:wr \
@@ -112,6 +115,7 @@ IMG_STRING_LATEST="$REPO_AND_IMAGE:latest"
 # build the image, removing intermediate layers, deleting cache
 if [ $CACHE = true ]; then
   echo "Building with caching enabled"
+  cleanDocker
   sudo docker build -t "$IMG_STRING" -t "$IMG_STRING_LATEST" $DOCKER_FILE
 else
   echo "Building without cache"
@@ -134,6 +138,7 @@ if [[ $? -eq 0 ]]; then
       runInteractive
     else
       testrun
+      sudo docker logs $CONTAINER_NAME
     fi
   else
     if [[ $INTERACTIVE = true ]]; then
